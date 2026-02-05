@@ -35,6 +35,54 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema, 'language_app_users');
 
+// Progress, Achievement, Lesson, Grammar, Vocab schemas
+const progressSchema = new mongoose.Schema({
+  userId: String,
+  module: String,
+  score: Number,
+  total: Number,
+  timestamp: { type: Date, default: Date.now }
+});
+const Progress = mongoose.model('Progress', progressSchema);
+
+const achievementSchema = new mongoose.Schema({
+  userId: String,
+  title: String,
+  description: String,
+  icon: String,
+  earned: Boolean,
+  earnedAt: Date
+});
+const Achievement = mongoose.model('Achievement', achievementSchema);
+
+const lessonSchema = new mongoose.Schema({
+  title: String,
+  topic: String,
+  progress: { type: Number, default: 0 },
+  level: String,
+  exercises: mongoose.Schema.Types.Mixed
+});
+const Lesson = mongoose.model('Lesson', lessonSchema);
+
+const grammarSchema = new mongoose.Schema({}, { strict: false });
+const Grammar = mongoose.model('Grammar', grammarSchema);
+
+const vocabSchema = new mongoose.Schema({}, { strict: false });
+const Vocab = mongoose.model('Vocab', vocabSchema);
+
+// Nodemailer transporter (for forgot password)
+function createTransporter() {
+  return nodemailer.createTransport({
+    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.EMAIL_PORT || '587', 10),
+    secure: false,
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS
+    }
+  });
+}
+
 //  3. AUTH MIDDLEWARE (Teesra)
 const authMiddleware = async (req, res, next) => {
   try {
@@ -80,12 +128,35 @@ app.get("/api/vocab", async (req, res) => {
   }
 });
 
+app.get("/api/lessons", async (req, res) => {
+  try {
+    const lessons = await Lesson.find();
+    res.json(lessons);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put("/api/lessons/:id", async (req, res) => {
+  try {
+    const updated = await Lesson.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
+    if (!updated) return res.status(404).json({ error: 'Lesson not found' });
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Progress APIs
 app.post('/api/progress', authMiddleware, async (req, res) => {
   try {
     const { module, score, total } = req.body;
     const progress = new Progress({
-      userId: req.user._id.toString(),
+      userId: String(req.user.userId),
       module,
       score,
       total
@@ -99,7 +170,7 @@ app.post('/api/progress', authMiddleware, async (req, res) => {
 
 app.get('/api/progress/me', authMiddleware, async (req, res) => {
   try {
-    const progressData = await Progress.find({ userId: req.user._id.toString() });
+    const progressData = await Progress.find({ userId: String(req.user.userId) });
 
     const summary = {
       totalLessons: progressData.length,
@@ -131,7 +202,7 @@ app.get('/api/progress/me/weekly', authMiddleware, async (req, res) => {
     const weeklyProgress = await Progress.aggregate([
       {
         $match: {
-          userId: req.user._id.toString(),
+          userId: String(req.user.userId),
           timestamp: { $gte: oneWeekAgo }
         }
       },
@@ -154,7 +225,7 @@ app.post('/api/achievements', authMiddleware, async (req, res) => {
   try {
     const { title, description, icon } = req.body;
     const achievement = new Achievement({
-      userId: req.user._id.toString(),
+      userId: String(req.user.userId),
       title,
       description,
       icon,
@@ -170,7 +241,7 @@ app.post('/api/achievements', authMiddleware, async (req, res) => {
 
 app.get('/api/achievements/me', authMiddleware, async (req, res) => {
   try {
-    const achievements = await Achievement.find({ userId: req.user._id.toString() });
+    const achievements = await Achievement.find({ userId: String(req.user.userId) });
     res.json(achievements);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -195,7 +266,7 @@ app.post('/api/lessons/:id/progress', authMiddleware, async (req, res) => {
 
     // ✅ Save to progress tracking
     const progressRecord = new Progress({
-      userId: req.user._id.toString(),
+      userId: String(req.user.userId),
       module: "lesson",
       score: progress,
       total: 100
@@ -219,7 +290,7 @@ app.get('/api/lessons/progress/me', authMiddleware, async (req, res) => {
   try {
     const lessons = await Lesson.find();
     const userProgress = await Progress.find({
-      userId: req.user._id.toString(),
+      userId: String(req.user.userId),
       module: "lesson"
     });
 
@@ -596,7 +667,7 @@ const conversationHistory = new Map();
 app.post('/api/conversation/claude-chat', authMiddleware, async (req, res) => {
   try {
     const { message, scenarioId, scenarioContext } = req.body;
-    const userId = req.user._id.toString();
+    const userId = String(req.user.userId);
 
     const historyKey = `${userId}_${scenarioId}`;
     if (!conversationHistory.has(historyKey)) {
@@ -662,7 +733,7 @@ Your response:`;
       console.log('✅ Alternative Model Response:', altResponse);
 
       // Update history
-      const historyKey = `${req.user._id.toString()}_${req.body.scenarioId}`;
+      const historyKey = `${String(req.user.userId)}_${req.body.scenarioId}`;
       const history = conversationHistory.get(historyKey) || [];
       history.push({ role: 'user', text: req.body.message });
       history.push({ role: 'ai', text: altResponse });
@@ -691,7 +762,7 @@ Your response:`;
 app.post('/api/conversation/reset', authMiddleware, async (req, res) => {
   try {
     const { scenarioId } = req.body;
-    const userId = req.user._id.toString();
+    const userId = String(req.user.userId);
     const historyKey = `${userId}_${scenarioId}`;
 
     conversationHistory.delete(historyKey);
@@ -707,7 +778,7 @@ app.post('/api/conversation/reset', authMiddleware, async (req, res) => {
 app.post('/api/conversation/feedback', authMiddleware, async (req, res) => {
   try {
     const { scenarioId } = req.body;
-    const userId = req.user._id.toString();
+    const userId = String(req.user.userId);
     const historyKey = `${userId}_${scenarioId}`;
     const history = conversationHistory.get(historyKey) || [];
 
@@ -744,7 +815,7 @@ app.post('/api/conversation/save-progress', authMiddleware, async (req, res) => 
     const { scenarioId, messageCount, duration } = req.body;
 
     const progress = new Progress({
-      userId: req.user._id.toString(),
+      userId: String(req.user.userId),
       module: `conversation-${scenarioId}`,
       score: messageCount * 10,
       total: 100,

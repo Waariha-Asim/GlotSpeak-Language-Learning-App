@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, Target, Award, Flame, Calendar, Clock, Star } from 'lucide-react';
+import { TrendingUp, Target, Award, Flame, Clock, Star } from 'lucide-react';
 import { useTheme } from '../ThemeContext'; // ✅ Theme hook import kiya
 
 interface ProgressData {
@@ -68,9 +68,11 @@ export const Progress: React.FC = () => {
         }
       });
       const data = await response.json();
-      setProgressData(data);
+      if (response.ok && data && !data.error) setProgressData(data);
+      else setProgressData(null);
     } catch (error) {
       console.error('Error fetching progress:', error);
+      setProgressData(null);
     }
   };
 
@@ -83,9 +85,10 @@ export const Progress: React.FC = () => {
         }
       });
       const data = await response.json();
-      setAchievements(data);
+      setAchievements(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching achievements:', error);
+      setAchievements([]);
     }
   };
 
@@ -98,6 +101,17 @@ export const Progress: React.FC = () => {
         }
       });
       const data = await response.json();
+
+      if (!response.ok || !Array.isArray(data)) {
+        setWeeklyData([
+          { day: 'Mon', minutes: 0 }, { day: 'Tue', minutes: 0 },
+          { day: 'Wed', minutes: 0 }, { day: 'Thu', minutes: 0 },
+          { day: 'Fri', minutes: 0 }, { day: 'Sat', minutes: 0 },
+          { day: 'Sun', minutes: 0 },
+        ]);
+        setLoading(false);
+        return;
+      }
 
       // Transform API data to match our format
       const transformedData = [
@@ -114,12 +128,11 @@ export const Progress: React.FC = () => {
       setLoading(false);
     } catch (error) {
       console.error('Error fetching weekly data:', error);
-      // Fallback data
       setWeeklyData([
-        { day: 'Mon', minutes: 25 }, { day: 'Tue', minutes: 15 },
-        { day: 'Wed', minutes: 30 }, { day: 'Thu', minutes: 20 },
-        { day: 'Fri', minutes: 35 }, { day: 'Sat', minutes: 40 },
-        { day: 'Sun', minutes: 28 },
+        { day: 'Mon', minutes: 0 }, { day: 'Tue', minutes: 0 },
+        { day: 'Wed', minutes: 0 }, { day: 'Thu', minutes: 0 },
+        { day: 'Fri', minutes: 0 }, { day: 'Sat', minutes: 0 },
+        { day: 'Sun', minutes: 0 },
       ]);
       setLoading(false);
     }
@@ -133,10 +146,10 @@ export const Progress: React.FC = () => {
         }
       });
       const lessonProgressData = await response.json();
-      setLessonProgress(lessonProgressData);
-      console.log('Lesson Progress:', lessonProgressData);
+      setLessonProgress(Array.isArray(lessonProgressData) ? lessonProgressData : []);
     } catch (error) {
       console.error('Fetch lesson progress error:', error);
+      setLessonProgress([]);
     }
   };
 
