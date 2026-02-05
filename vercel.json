@@ -2,22 +2,16 @@
   "version": 2,
   "builds": [
     {
-      "src": "server.js",
-      "use": "@vercel/node"
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": { "distDir": "dist" }
     }
   ],
   "routes": [
     {
-      "src": "/(.*)",
-      "dest": "server.js"
+      "src": "/(?!api)(.*)",
+      "dest": "/index.html",
+      "status": 200
     }
-  ],
-  "env": {
-    "MONGODB_URI": "@mongodb_uri",
-    "JWT_SECRET": "@jwt_secret",
-    "GEMINI_API_KEY": "@gemini_api_key",
-    "EMAIL_USER": "@email_user",
-    "EMAIL_PASSWORD": "@email_password",
-    "FRONTEND_URL": "@frontend_url"
-  }
+  ]
 }
