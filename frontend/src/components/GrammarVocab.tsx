@@ -37,41 +37,41 @@ export const GrammarVocab: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // 1. Grammar Fetch (Filtered by Level - Auto categorize)
     axios.get(`${API_URL}/api/grammar`)
       .then((res) => {
         const allGrammar = res.data;
 
-        // Auto categorize questions based on index (assuming first 300 beginner, next 400 intermediate, rest advanced)
-        let filteredGrammar = [];
+        // Current level logic
+        const normalizedLevel = (level || 'beginner').toLowerCase();
 
-        if (normalizedLevel === 'beginner') {
-          // Beginner: First 300 questions (0-299)
-          filteredGrammar = allGrammar.slice(0, 300);
-        } else if (normalizedLevel === 'intermediate') {
-          // Intermediate: Next 400 questions (300-699)
-          filteredGrammar = allGrammar.slice(300, 700);
-        } else if (normalizedLevel === 'advanced') {
-          // Advanced: Remaining questions (700-1000)
-          filteredGrammar = allGrammar.slice(700, 1000);
-        } else {
-          // Default to beginner if level not recognized
-          filteredGrammar = allGrammar.slice(0, 300);
-        }
+        let filteredGrammar: any[] = [];
 
-        // If database has level field, use that instead
-        if (allGrammar[0]?.level) {
-          filteredGrammar = allGrammar.filter((exercise: any) =>
-            exercise.level?.toLowerCase() === normalizedLevel
+        // Check if all exercises have 'level' field
+        const hasLevelField = allGrammar.every((g: any) => g.level !== undefined);
+        if (hasLevelField) {
+          filteredGrammar = allGrammar.filter(
+            (exercise: any) => exercise.level.toLowerCase() === normalizedLevel
           );
+        } else {
+          // Range-based fallback when level metadata is absent
+          if (normalizedLevel === 'beginner') {
+            filteredGrammar = allGrammar.slice(0, 300);
+          } else if (normalizedLevel === 'intermediate') {
+            filteredGrammar = allGrammar.slice(300, 600);
+          } else if (normalizedLevel === 'advanced') {
+            filteredGrammar = allGrammar.slice(600, 997);
+          } else {
+            filteredGrammar = allGrammar;
+          }
         }
 
+        // Set state for frontend
         setGrammarExercises(filteredGrammar);
         setCurrentExercise(0);
         setSelectedAnswer(null);
         setShowResult(false);
       })
-      .catch((err) => console.error("Grammar fetch error:", err))
+      .catch((err) => console.error("❌ Grammar fetch error:", err))
       .finally(() => setLoadingGrammar(false));
 
     // 2. Vocab Fetch (Filtered by Level)
@@ -80,13 +80,13 @@ export const GrammarVocab: React.FC = () => {
         const allVocab = res.data;
         let filteredVocab = [];
 
-        // Auto categorize vocabulary words based on index
+        // Auto categorize vocabulary words based on index (aligned with grammar ranges)
         if (normalizedLevel === 'beginner') {
           filteredVocab = allVocab.slice(0, 300);
         } else if (normalizedLevel === 'intermediate') {
-          filteredVocab = allVocab.slice(300, 700);
+          filteredVocab = allVocab.slice(300, 600);
         } else if (normalizedLevel === 'advanced') {
-          filteredVocab = allVocab.slice(700, 1000);
+          filteredVocab = allVocab.slice(600, 997);
         } else {
           filteredVocab = allVocab.slice(0, 300);
         }
