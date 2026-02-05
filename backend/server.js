@@ -830,6 +830,11 @@ app.post('/api/conversation/save-progress', authMiddleware, async (req, res) => 
   }
 });
 
+// Root route (for health checks / load balancers that hit /)
+app.get("/", (req, res) => {
+  res.status(200).send("OK");
+});
+
 // Health Check
 app.get("/health", (req, res) => {
   res.send("Server running & DB connected");
