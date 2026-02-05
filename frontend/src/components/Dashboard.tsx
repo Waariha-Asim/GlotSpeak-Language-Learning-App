@@ -79,7 +79,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       </div>
 
       {/* Main Features */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         <button
           onClick={() => onNavigate('library')}
           className={`w-full rounded-2xl p-4 shadow-lg transition-all duration-200 transform hover:scale-105 ${
@@ -109,6 +109,23 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             </div>
           </div>
         </button>
+
+        <a
+          href="https://docs.google.com/forms/u/0/d/e/1FAIpQLSdxId_61SJhXigbZ7KHwPugmpxtcf35us8pXAiqrZQrM43Kqw/formResponse"
+          target="_blank"
+          rel="noreferrer"
+          className={`w-full rounded-2xl p-4 shadow-lg transition-all duration-200 transform hover:scale-105 block ${
+            darkMode ? "bg-gray-800 border border-gray-700" : "bg-white"
+          }`}
+        >
+          <div className="flex items-center">
+            <PenTool className="text-blue-500 mr-3" size={24} />
+            <div className="text-left">
+              <h4 className={`font-semibold ${darkMode ? "text-white" : "text-gray-800"}`}>Submit Feedback</h4>
+              <p className={darkMode ? "text-gray-400 text-sm" : "text-gray-500 text-sm"}>Share your thoughts on GlotSpeak</p>
+            </div>
+          </div>
+        </a>
       </div>
     </div>
   );
