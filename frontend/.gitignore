@@ -19,11 +19,24 @@ build/
 coverage/
 .cache/
 *.tsbuildinfo
+.next/
+out/
 
 # Environment files
 .env
 .env.*
+!.env.example
 *.env.local
+*.env.production
+*.env.development
+*.env.test
+
+# Temporary & upload files
+temp/
+tmp/
+*.tmp
+*.temp
+.temp/
 
 # Editor directories and files
 .vscode/*
@@ -31,8 +44,15 @@ coverage/
 .idea/
 .DS_Store
 Thumbs.db
+desktop.ini
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+*.swp
+*~
+
+# Deployment
+.vercel/
+.netlify/

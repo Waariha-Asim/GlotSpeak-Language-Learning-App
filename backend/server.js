@@ -41,6 +41,7 @@ const progressSchema = new mongoose.Schema({
   module: String,
   score: Number,
   total: Number,
+  minutes: Number,
   timestamp: { type: Date, default: Date.now }
 });
 const Progress = mongoose.model('Progress', progressSchema);
@@ -154,13 +155,20 @@ app.put("/api/lessons/:id", async (req, res) => {
 // Progress APIs
 app.post('/api/progress', authMiddleware, async (req, res) => {
   try {
-    const { module, score, total } = req.body;
+    const { module, score, total, minutes } = req.body;
+    
+    // Ensure minutes is a valid number
+    const safeMinutes = Number.isFinite(minutes) ? Math.max(0, Math.min(minutes, 60)) : 0;
+    
     const progress = new Progress({
       userId: String(req.user.userId),
-      module,
-      score,
-      total
+      module: module || 'session', // Default to 'session' for time tracking
+      score: score || 0,
+      total: total || 0,
+      minutes: safeMinutes, // Always include minutes
+      timestamp: new Date() // Explicit timestamp
     });
+    
     await progress.save();
     res.json({ success: true, message: 'Progress saved!' });
   } catch (error) {
@@ -194,29 +202,85 @@ app.get('/api/progress/me', authMiddleware, async (req, res) => {
   }
 });
 
+// Update weekly aggregation to handle minutes properly
 app.get('/api/progress/me/weekly', authMiddleware, async (req, res) => {
   try {
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-
+    const timezone = 'Asia/Karachi';
+    const today = new Date();
+    const pakToday = new Date(today.toLocaleString('en-US', { timeZone: timezone }));
+    const sevenDaysAgo = new Date(pakToday);
+    sevenDaysAgo.setDate(pakToday.getDate() - 6);
+    
+    // Reset times for accurate date comparison
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+    
+    // FIXED: Aggregate minutes from ALL entries (not just minutes > 0)
     const weeklyProgress = await Progress.aggregate([
       {
         $match: {
           userId: String(req.user.userId),
-          timestamp: { $gte: oneWeekAgo }
+          timestamp: { $gte: sevenDaysAgo }
+        }
+      },
+      {
+        $addFields: {
+          // Extract PKT date
+          pktDate: {
+            $dateToString: {
+              format: "%Y-%m-%d",
+              date: "$timestamp",
+              timezone: timezone
+            }
+          },
+          // Ensure minutes field exists (default to 0)
+          validMinutes: { $ifNull: ["$minutes", 0] }
         }
       },
       {
         $group: {
-          _id: { $dayOfWeek: "$timestamp" },
-          totalMinutes: { $sum: "$score" },
+          _id: "$pktDate",
+          totalMinutes: { $sum: "$validMinutes" },
           count: { $sum: 1 }
         }
-      }
+      },
+      {
+        $project: {
+          day: "$_id",
+          totalMinutes: { $min: ["$totalMinutes", 1440] }, // Clamp to 24h
+          count: 1,
+          _id: 0
+        }
+      },
+      { $sort: { day: 1 } }
     ]);
 
-    res.json(weeklyProgress);
+    // Build full week response
+    const response = [];
+    const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(pakToday);
+      d.setDate(pakToday.getDate() - i);
+      d.setHours(0, 0, 0, 0);
+      
+      const dayKey = d.toISOString().split('T')[0];
+      const jsDay = d.getDay();
+      
+      // Find matching progress
+      const dayProgress = weeklyProgress.find(p => p.day === dayKey);
+      
+      response.push({
+        _id: jsDay === 0 ? 1 : jsDay + 1, // Match your frontend mapping
+        day: dayKey,
+        label: daysOfWeek[jsDay],
+        totalMinutes: dayProgress ? dayProgress.totalMinutes : 0,
+        count: dayProgress ? dayProgress.count : 0
+      });
+    }
+    
+    res.json(response);
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: error.message });
   }
 });

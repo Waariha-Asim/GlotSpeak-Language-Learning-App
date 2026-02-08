@@ -12,6 +12,15 @@ export const ForgotPassword: React.FC<ForgotPasswordProps> = ({ onNavigate }) =>
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (!loading) {
+        handleForgotPassword();
+      }
+    }
+  };
+
   const handleForgotPassword = async () => {
     if (!email) {
       setError('Please enter your email address');
@@ -99,6 +108,7 @@ export const ForgotPassword: React.FC<ForgotPasswordProps> = ({ onNavigate }) =>
           placeholder="Enter your email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          onKeyDown={handleKeyDown}
           className="w-full p-3 mb-4 border border-white/30 rounded-lg bg-white text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-400"
         />
 

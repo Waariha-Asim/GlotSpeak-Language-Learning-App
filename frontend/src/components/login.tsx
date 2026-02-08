@@ -15,6 +15,15 @@ export const Login: React.FC<LoginProps> = ({ onNavigate, onLogin }) => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false); //  Success state add karo
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (!loading) {
+        handleLogin();
+      }
+    }
+  };
+
   const handleLogin = async () => {
     if (!email || !password) {
       setError('Please fill all fields');
@@ -97,6 +106,7 @@ export const Login: React.FC<LoginProps> = ({ onNavigate, onLogin }) => {
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          onKeyDown={handleKeyDown}
           className="w-full p-3 mb-4 border border-white/30 rounded-lg bg-white text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-400"
         />
 
@@ -106,6 +116,7 @@ export const Login: React.FC<LoginProps> = ({ onNavigate, onLogin }) => {
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={handleKeyDown}
             className="w-full p-3 border border-white/30 rounded-lg bg-white text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-400"
           />
           <button

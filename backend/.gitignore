@@ -22,7 +22,44 @@ coverage/
 # Environment & secrets
 .env
 .env.*
+!.env.example
 *.env.local
+*.env.production
+*.env.development
+*.env.test
+config/local.json
+secrets.json
+serviceAccountKey.json
+
+# Database files
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+dump.rdb
+*.mongo
+
+# Authentication & certificates
+*.pem
+*.key
+*.cert
+*.p12
+*.pfx
+*.crt
+*.csr
+
+# Cloud credentials
+.aws/
+.gcloud/
+.azure/
+
+# Uploads & temp files
+uploads/
+temp/
+tmp/
+*.tmp
+*.temp
+.temp/
 
 # OS & editor files
 .vscode/*
@@ -30,9 +67,12 @@ coverage/
 .idea/
 .DS_Store
 Thumbs.db
+desktop.ini
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+*.swp
+*~
 
