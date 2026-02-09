@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TrendingUp, Target, Award, Flame, Clock, Star, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTheme } from '../ThemeContext';
 
@@ -34,7 +34,7 @@ export const Progress: React.FC = () => {
   const [localSpeechCount, setLocalSpeechCount] = useState<number>(0);
   const [localGrammarCount, setLocalGrammarCount] = useState<number>(0);
   const [localVocabCount, setLocalVocabCount] = useState<number>(0);
-  const [sessionSeconds, setSessionSeconds] = useState<number>(0); // Live session counter (resets on refresh/logout)
+  const [sessionSeconds, setSessionSeconds] = useState<number>(0);
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => {
     const today = new Date();
     const sunday = new Date(today);
@@ -43,11 +43,6 @@ export const Progress: React.FC = () => {
   });
   
   const { darkMode } = useTheme();
-  
-  const accumulatedSecondsRef = useRef<number>(0); // Live session tracking only
-  const lastUpdateTimeRef = useRef<number>(Date.now());
-  const secondTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const flushTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Get Pakistan time (UTC+5)
   const getPakistanNow = () => {
@@ -75,94 +70,25 @@ export const Progress: React.FC = () => {
     return new Date(dateKey + 'T00:00:00+05:00');
   };
 
-  // Convert accumulated seconds to minutes and send to backend
-  const flushSecondsToMinutes = async () => {
-    const totalSeconds = accumulatedSecondsRef.current;
-    if (totalSeconds < 60) return; // Only send when we have at least 1 minute
-    
-    const minutes = Math.floor(totalSeconds / 60);
-    const remainingSeconds = totalSeconds % 60;
-    
-    // Keep only remaining seconds for current session
-    accumulatedSecondsRef.current = remainingSeconds;
-    setSessionSeconds(remainingSeconds);
-    
-    console.debug('[Progress] Flushing seconds to minutes', { 
-      totalSeconds, 
-      minutes, 
-      remainingSeconds 
-    });
-    
-    await sendMinutesToBackend(minutes);
-    fetchWeeklyDataForWeek(currentWeekStart);
-  };
+  // Listen to global progress tracker updates
+  useEffect(() => {
+    const handleProgressTick = (event: CustomEvent) => {
+      setSessionSeconds(event.detail.seconds);
+    };
 
-  // Send minutes to backend
-  const sendMinutesToBackend = async (minutes: number) => {
-    if (!minutes || minutes <= 0) return;
-    
-    // Save to localStorage
-    const todayKey = getTodayKey();
-    const currentMinutes = parseInt(localStorage.getItem(`minutes_${todayKey}`) || '0');
-    localStorage.setItem(`minutes_${todayKey}`, String(currentMinutes + minutes));
-    
-    // Try to send to backend if logged in
-    const token = localStorage.getItem('token');
-    if (!token) {
-      console.debug('[Progress] Not logged in, saved locally only');
-      return;
-    }
+    const handleProgressUpdate = () => {
+      // Refresh weekly data when minutes are flushed
+      fetchWeeklyDataForWeek(currentWeekStart);
+    };
 
-    try {
-      const response = await fetch(`${API_URL}/api/progress`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          module: 'session',
-          minutes: minutes,
-          score: minutes,
-          total: 1440
-        })
-      });
-      
-      if (response.ok) {
-        console.debug('[Progress] Minutes sent successfully', { minutes });
-      } else {
-        throw new Error(`HTTP ${response.status}`);
-      }
-    } catch (error) {
-      console.error('Error sending session minutes:', error);
-      const failedMinutes = parseInt(localStorage.getItem('failed_minutes') || '0');
-      localStorage.setItem('failed_minutes', String(failedMinutes + minutes));
-    }
-  };
+    window.addEventListener('progress-tick', handleProgressTick as EventListener);
+    window.addEventListener('progress-updated', handleProgressUpdate as EventListener);
 
-  // Track user activity
-  const trackActivity = () => {
-    const now = Date.now();
-    if (now - lastUpdateTimeRef.current > 2 * 60 * 1000) {
-      console.debug('[Progress] User became active after inactivity');
-    }
-    lastUpdateTimeRef.current = now;
-  };
-
-  // Update accumulated seconds (runs every second)
-  const updateSeconds = () => {
-    const now = Date.now();
-    const timeSinceLastActivity = now - lastUpdateTimeRef.current;
-    
-    // Only count seconds if: tab visible and user active in last 5 minutes
-    if (!document.hidden && timeSinceLastActivity < 5 * 60 * 1000) {
-      accumulatedSecondsRef.current += 1;
-      setSessionSeconds(accumulatedSecondsRef.current);
-      
-      // Note: We don't auto-flush here to keep continuous display
-      // The 2-minute interval timer handles flushing to backend
-    }
-  };
+    return () => {
+      window.removeEventListener('progress-tick', handleProgressTick as EventListener);
+      window.removeEventListener('progress-updated', handleProgressUpdate as EventListener);
+    };
+  }, [currentWeekStart]);
 
   // Get week data for a specific week start date (Sunday)
   const getWeekData = (weekStartDate: Date) => {
@@ -179,16 +105,15 @@ export const Progress: React.FC = () => {
       const dayNumber = dayDate.getDate();
       const month = dayDate.toLocaleDateString('en-US', { month: 'short' });
       
-      // Get minutes from localStorage (already sent to backend)
       const minutes = parseInt(localStorage.getItem(`minutes_${dateKey}`) || '0');
       
       let totalMinutes = minutes;
       const isToday = dateKey === getTodayKey();
 
-      // Add current live session seconds as minutes (for display only)
       if (isToday) {
-        const secondsAsMinutes = Math.floor(sessionSeconds / 60);
-        totalMinutes += secondsAsMinutes;
+        // ✅ Only add complete minutes from session seconds
+        const completeMinutes = Math.floor(sessionSeconds / 60);
+        totalMinutes = minutes + completeMinutes;
       }
 
       const dayDateAtMidnight = new Date(dayDate);
@@ -210,7 +135,6 @@ export const Progress: React.FC = () => {
     return weekData;
   };
 
-  // Navigate to previous week
   const goToPreviousWeek = () => {
     const newWeekStart = new Date(currentWeekStart);
     newWeekStart.setDate(newWeekStart.getDate() - 7);
@@ -218,7 +142,6 @@ export const Progress: React.FC = () => {
     fetchWeeklyDataForWeek(newWeekStart);
   };
 
-  // Navigate to next week
   const goToNextWeek = () => {
     const newWeekStart = new Date(currentWeekStart);
     newWeekStart.setDate(newWeekStart.getDate() + 7);
@@ -232,7 +155,6 @@ export const Progress: React.FC = () => {
     }
   };
 
-  // Go to current week
   const goToCurrentWeek = () => {
     const today = new Date();
     const sunday = new Date(today);
@@ -241,52 +163,98 @@ export const Progress: React.FC = () => {
     fetchWeeklyDataForWeek(sunday);
   };
 
-  // Fetch weekly data for specific week
   const fetchWeeklyDataForWeek = async (weekStartDate: Date) => {
     try {
       const token = localStorage.getItem('token');
-      const weekData = getWeekData(weekStartDate);
       
       if (token) {
         try {
-          const response = await fetch(`${API_URL}/api/progress/me/weekly`, {
-            headers: { 'Authorization': `Bearer ${token}` }
+          // Calculate week range for MongoDB query
+          const weekStart = new Date(weekStartDate);
+          const weekEnd = new Date(weekStart);
+          weekEnd.setDate(weekStart.getDate() + 6);
+          
+          const startDate = getDateKey(weekStart);
+          const endDate = getDateKey(weekEnd);
+          
+          // Fetch session data from MongoDB
+          const response = await fetch(`${API_URL}/api/session/get-range`, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}` 
+            },
+            body: JSON.stringify({ startDate, endDate })
           });
           
           if (response.ok) {
-            const serverWeeklyData = await response.json();
+            const sessionData = await response.json();
             
-            const mergedData = weekData.map(day => {
-              const dayOfWeek = day.fullDate.getDay();
-              const serverId = dayOfWeek === 0 ? 1 : dayOfWeek + 1;
-              const serverEntry = serverWeeklyData.find((d: any) => d._id === serverId);
-              let serverMinutes = 0;
+            // Build week data from MongoDB sessions
+            const weekData = [];
+            const today = new Date(getTodayKey());
+            
+            for (let i = 0; i < 7; i++) {
+              const dayDate = new Date(weekStart);
+              dayDate.setDate(weekStart.getDate() + i);
               
-              if (serverEntry) {
-                const serverDate = getDateFromKey(serverEntry.day || '');
-                if (serverDate && getDateKey(serverDate) === day.date) {
-                  serverMinutes = serverEntry.totalMinutes || 0;
-                }
+              const dateKey = getDateKey(dayDate);
+              const dayName = dayDate.toLocaleDateString('en-US', { weekday: 'short' });
+              const dayNumber = dayDate.getDate();
+              const month = dayDate.toLocaleDateString('en-US', { month: 'short' });
+              
+              // Find this day's data from MongoDB
+              const daySession = sessionData.find((s: any) => s.date === dateKey);
+              const minutes = daySession ? daySession.minutes : 0;
+              
+              let totalMinutes = minutes;
+              const isToday = dateKey === getTodayKey();
+              
+              // ✅ FIXED: Only add complete unflushed minutes (don't add partial minutes)
+              if (isToday && sessionSeconds > 0) {
+                // Calculate how many complete minutes are in the current session
+                const sessionCompleteMinutes = Math.floor(sessionSeconds / 60);
+                
+                // If the session has complete minutes beyond what's already flushed, show them
+                // This prevents jumping - we only increment when a full minute passes
+                totalMinutes = Math.max(minutes, sessionCompleteMinutes);
               }
               
-              const minutes = Math.max(day.minutes, serverMinutes);
+              const dayDateAtMidnight = new Date(dayDate);
+              dayDateAtMidnight.setHours(0, 0, 0, 0);
               
-              return {
-                ...day,
-                minutes: Math.min(minutes, 1440),
-              };
+              weekData.push({
+                date: dateKey,
+                dayName,
+                dayNumber,
+                month,
+                fullDate: dayDate,
+                minutes: Math.min(totalMinutes, 1440),
+                isToday,
+                isPast: dayDateAtMidnight < today,
+                isFuture: dayDateAtMidnight > today,
+              });
+            }
+            
+            setWeeklyData(weekData);
+            
+            // Update localStorage cache with MongoDB data
+            sessionData.forEach((s: any) => {
+              localStorage.setItem(`minutes_${s.date}`, String(s.minutes));
+              localStorage.setItem(`unflushed_seconds_${s.date}`, String(s.unflushedSeconds));
             });
             
-            setWeeklyData(mergedData);
           } else {
-            setWeeklyData(weekData);
+            // Fallback to localStorage data
+            setWeeklyData(getWeekData(weekStartDate));
           }
         } catch (error) {
-          console.error('Error fetching server weekly data:', error);
-          setWeeklyData(weekData);
+          console.error('Error fetching MongoDB weekly data:', error);
+          setWeeklyData(getWeekData(weekStartDate));
         }
       } else {
-        setWeeklyData(weekData);
+        // Not logged in, use localStorage only
+        setWeeklyData(getWeekData(weekStartDate));
       }
       
     } catch (error) {
@@ -294,46 +262,6 @@ export const Progress: React.FC = () => {
       setWeeklyData(getWeekData(weekStartDate));
     }
   };
-
-  // Initialize tracking - SESSION ONLY (resets on refresh/logout)
-  useEffect(() => {
-    // Start fresh session (do NOT load saved seconds)
-    accumulatedSecondsRef.current = 0;
-    setSessionSeconds(0);
-    console.debug('[Progress] Started new session - counter reset to 0');
-    
-    // Set up event listeners for user activity
-    const activityEvents = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
-    activityEvents.forEach(event => {
-      document.addEventListener(event, trackActivity);
-    });
-    
-    // Start second timer for counting
-    secondTimerRef.current = setInterval(updateSeconds, 1000);
-    
-    // Auto-flush timer (every 2 minutes)
-    flushTimerRef.current = setInterval(() => {
-      if (accumulatedSecondsRef.current >= 60) {
-        flushSecondsToMinutes();
-      }
-    }, 2 * 60 * 1000);
-    
-    return () => {
-      // Cleanup event listeners
-      activityEvents.forEach(event => {
-        document.removeEventListener(event, trackActivity);
-      });
-      
-      // Flush any remaining seconds before unmount
-      if (accumulatedSecondsRef.current >= 60) {
-        flushSecondsToMinutes();
-      }
-      
-      // Clear timers
-      if (secondTimerRef.current) clearInterval(secondTimerRef.current);
-      if (flushTimerRef.current) clearInterval(flushTimerRef.current);
-    };
-  }, []);
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -356,16 +284,16 @@ export const Progress: React.FC = () => {
     }
   }, [currentUser]);
 
-  // When sessionSeconds changes, update today's data in weeklyData
   useEffect(() => {
     if (weeklyData.length > 0) {
       const updatedData = weeklyData.map(day => {
         if (day.date === getTodayKey()) {
           const minutes = parseInt(localStorage.getItem(`minutes_${day.date}`) || '0');
-          const secondsAsMinutes = Math.floor(sessionSeconds / 60);
+          // ✅ Only show complete minutes from the session
+          const sessionCompleteMinutes = Math.floor(sessionSeconds / 60);
           return {
             ...day,
-            minutes: Math.min(minutes + secondsAsMinutes, 1440),
+            minutes: Math.min(Math.max(minutes, sessionCompleteMinutes), 1440),
           };
         }
         return day;
@@ -374,17 +302,38 @@ export const Progress: React.FC = () => {
     }
   }, [sessionSeconds]);
 
-  // Retry failed minutes
   const retryFailedMinutes = async () => {
     const failedMinutes = parseInt(localStorage.getItem('failed_minutes') || '0');
     if (failedMinutes > 0 && currentUser) {
       console.debug('[Progress] Retrying failed minutes', { failedMinutes });
-      await sendMinutesToBackend(failedMinutes);
-      localStorage.setItem('failed_minutes', '0');
+      
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      try {
+        const response = await fetch(`${API_URL}/api/progress`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            module: 'session',
+            minutes: failedMinutes,
+            score: failedMinutes,
+            total: 1440
+          })
+        });
+        
+        if (response.ok) {
+          localStorage.setItem('failed_minutes', '0');
+        }
+      } catch (error) {
+        console.error('Error retrying failed minutes:', error);
+      }
     }
   };
 
-  // Refresh data periodically
   useEffect(() => {
     if (!currentUser) return;
     
@@ -396,35 +345,6 @@ export const Progress: React.FC = () => {
     
     return () => clearInterval(intervalId);
   }, [currentUser, currentWeekStart]);
-
-  // Check if it's a new day (midnight PKT)
-  useEffect(() => {
-    let timeoutId: ReturnType<typeof setTimeout>;
-    
-    const checkNewDay = () => {
-      const pakNow = getPakistanNow();
-      const tomorrow = new Date(pakNow);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(0, 0, 0, 0);
-      
-      const msUntilTomorrow = tomorrow.getTime() - pakNow.getTime();
-      
-      timeoutId = setTimeout(() => {
-        console.debug('[Progress] New day detected (midnight PKT)');
-        // Reset session for new day
-        accumulatedSecondsRef.current = 0;
-        setSessionSeconds(0);
-        fetchWeeklyDataForWeek(currentWeekStart);
-        checkNewDay();
-      }, msUntilTomorrow);
-    };
-    
-    checkNewDay();
-    
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId);
-    };
-  }, [currentWeekStart]);
 
   const fetchProgressData = async () => {
     try {
@@ -471,9 +391,9 @@ export const Progress: React.FC = () => {
     }
   };
 
-  // Format minutes to hours and minutes
   const formatHours = (minutes: number) => {
-    const clampedMinutes = Math.min(Math.round(minutes), 1440);
+    // ✅ Use floor instead of round to only show complete minutes
+    const clampedMinutes = Math.min(Math.floor(minutes), 1440);
     if (clampedMinutes < 60) return `${clampedMinutes}m`;
 
     const hours = Math.floor(clampedMinutes / 60);
@@ -483,7 +403,6 @@ export const Progress: React.FC = () => {
     return `${hours}h ${remainingMinutes.toString().padStart(2, '0')}m`;
   };
 
-  // Format week range
   const formatWeekRange = () => {
     const weekStart = new Date(currentWeekStart);
     const weekEnd = new Date(weekStart);
@@ -500,7 +419,6 @@ export const Progress: React.FC = () => {
     }
   };
 
-  // Format session display: shows cumulative time (0 sec, 59 sec, 1 min 1 sec, 2 min 30 sec, etc.)
   const formatSessionDisplay = (totalSeconds: number) => {
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
