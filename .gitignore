@@ -26,17 +26,58 @@ build/
 coverage/
 .cache/
 *.tsbuildinfo
+.next/
+out/
 
-# Environment files
+# Environment files & secrets
 .env
 .env.*
+!.env.example
 *.env.local
+*.env.production
+*.env.development
+*.env.test
 frontend/.env
 frontend/.env.*
+!frontend/.env.example
 frontend/*.env.local
 backend/.env
 backend/.env.*
+!backend/.env.example
 backend/*.env.local
+config/local.json
+secrets.json
+serviceAccountKey.json
+
+# Database files
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+dump.rdb
+*.mongo
+
+# Authentication & certificates
+*.pem
+*.key
+*.cert
+*.p12
+*.pfx
+*.crt
+*.csr
+
+# Cloud provider credentials
+.aws/
+.gcloud/
+.azure/
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+*.temp
+uploads/
+.temp/
 
 # OS & editor files
 .vscode/*
@@ -44,12 +85,22 @@ backend/*.env.local
 .idea/
 .DS_Store
 Thumbs.db
+desktop.ini
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+*.swp
+*~
 
-# Vercel & other deployment outputs
+# Deployment outputs
 .vercel/
+.netlify/
+.firebase/
+
+# Test & debug
+*.test.local
+.nyc_output/
+.jest/
 

@@ -9,20 +9,15 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 dotenv.config();
 
-//  1. JWT SECRET 
 const JWT_SECRET = process.env.JWT_SECRET;
-
-//gemini api key
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// Initialize Express app
 const app = express();
 
-// Middleware
 app.use(express.json());
 app.use(cors());
 
-//  2. USER SCHEMA & MODEL (Dusra)
+// USER SCHEMA
 const userSchema = new mongoose.Schema({
   name: String,
   email: { type: String, unique: true },
@@ -35,12 +30,30 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema, 'language_app_users');
 
-// Progress, Achievement, Lesson, Grammar, Vocab schemas
+// ✅ NEW: Session Tracking Schema - stores minutes and seconds per day
+const sessionTrackingSchema = new mongoose.Schema({
+  userId: { type: String, required: true, index: true },
+  date: { type: String, required: true, index: true }, // Format: YYYY-MM-DD
+  minutes: { type: Number, default: 0 }, // Total minutes sent to backend
+  unflushedSeconds: { type: Number, default: 0 }, // Seconds not yet converted to minutes
+  lastUpdated: { type: Date, default: Date.now }
+}, {
+  // Compound index for fast queries
+  indexes: [{ userId: 1, date: 1 }]
+});
+
+// Ensure unique userId + date combination
+sessionTrackingSchema.index({ userId: 1, date: 1 }, { unique: true });
+
+const SessionTracking = mongoose.model('SessionTracking', sessionTrackingSchema);
+
+// Progress, Achievement, Lesson schemas (existing)
 const progressSchema = new mongoose.Schema({
   userId: String,
   module: String,
   score: Number,
   total: Number,
+  minutes: Number,
   timestamp: { type: Date, default: Date.now }
 });
 const Progress = mongoose.model('Progress', progressSchema);
@@ -70,7 +83,6 @@ const Grammar = mongoose.model('Grammar', grammarSchema, 'Grammar');
 const vocabSchema = new mongoose.Schema({}, { strict: false });
 const Vocab = mongoose.model('Vocab', vocabSchema);
 
-// Nodemailer transporter (for forgot password)
 function createTransporter() {
   return nodemailer.createTransport({
     host: process.env.EMAIL_HOST || 'smtp.gmail.com',
@@ -83,7 +95,7 @@ function createTransporter() {
   });
 }
 
-//  3. AUTH MIDDLEWARE (Teesra)
+// AUTH MIDDLEWARE
 const authMiddleware = async (req, res, next) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
@@ -100,16 +112,138 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
-
-
-// MongoDB Connection (SIRF EK BAAR)
+// MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => {
-    console.log("MongoDB connected");
+    console.log("✅ MongoDB connected");
   })
   .catch((err) => console.error("❌ MongoDB error:", err));
 
-// Routes
+// ============================================
+// ✅ NEW SESSION TRACKING APIs
+// ============================================
+
+// ✅ Update session seconds (called frequently from frontend)
+app.post('/api/session/update-seconds', authMiddleware, async (req, res) => {
+  try {
+    const { date, seconds } = req.body; // date format: YYYY-MM-DD
+    
+    if (!date || typeof seconds !== 'number') {
+      return res.status(400).json({ error: 'Invalid request' });
+    }
+
+    // Upsert: update if exists, create if doesn't
+    await SessionTracking.findOneAndUpdate(
+      { userId: String(req.user.userId), date },
+      { 
+        unflushedSeconds: Math.max(0, seconds), // Allow any positive seconds
+        lastUpdated: new Date()
+      },
+      { upsert: true, new: true }
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Update seconds error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ✅ Flush seconds to minutes (called when 60+ seconds accumulated)
+app.post('/api/session/flush-minutes', authMiddleware, async (req, res) => {
+  try {
+    const { date, minutes } = req.body; // date format: YYYY-MM-DD
+    
+    if (!date || !minutes || minutes <= 0) {
+      return res.status(400).json({ error: 'Invalid request' });
+    }
+
+    // Simply add the minutes - don't modify unflushedSeconds
+    // Frontend manages the session seconds, we just accumulate minutes
+    const updated = await SessionTracking.findOneAndUpdate(
+      { userId: String(req.user.userId), date },
+      { 
+        $inc: { minutes: minutes },
+        $set: { lastUpdated: new Date() }
+      },
+      { upsert: true, new: true }
+    );
+
+    // Also save to Progress collection for backwards compatibility
+    const progress = new Progress({
+      userId: String(req.user.userId),
+      module: 'session',
+      score: minutes,
+      total: 1440,
+      minutes: minutes,
+      timestamp: new Date()
+    });
+    await progress.save();
+
+    res.json({ 
+      success: true, 
+      totalMinutes: updated.minutes,
+      message: 'Minutes flushed successfully' 
+    });
+  } catch (error) {
+    console.error('Flush minutes error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ✅ Get session data for a specific date
+app.get('/api/session/get-day/:date', authMiddleware, async (req, res) => {
+  try {
+    const { date } = req.params; // Format: YYYY-MM-DD
+    
+    const session = await SessionTracking.findOne({
+      userId: String(req.user.userId),
+      date
+    });
+
+    if (!session) {
+      return res.json({ minutes: 0, unflushedSeconds: 0 });
+    }
+
+    res.json({
+      minutes: session.minutes || 0,
+      unflushedSeconds: session.unflushedSeconds || 0,
+      totalSeconds: (session.minutes * 60) + (session.unflushedSeconds || 0)
+    });
+  } catch (error) {
+    console.error('Get day session error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ✅ Get session data for a date range (for weekly view)
+app.post('/api/session/get-range', authMiddleware, async (req, res) => {
+  try {
+    const { startDate, endDate } = req.body; // Format: YYYY-MM-DD
+    
+    const sessions = await SessionTracking.find({
+      userId: String(req.user.userId),
+      date: { $gte: startDate, $lte: endDate }
+    }).sort({ date: 1 });
+
+    const result = sessions.map(s => ({
+      date: s.date,
+      minutes: s.minutes || 0,
+      unflushedSeconds: s.unflushedSeconds || 0,
+      totalSeconds: (s.minutes * 60) + (s.unflushedSeconds || 0)
+    }));
+
+    res.json(result);
+  } catch (error) {
+    console.error('Get range error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// EXISTING ROUTES (unchanged)
+// ============================================
+
 app.get("/api/grammar", async (req, res) => {
   try {
     const docs = await Grammar.find();
@@ -151,16 +285,21 @@ app.put("/api/lessons/:id", async (req, res) => {
   }
 });
 
-// Progress APIs
 app.post('/api/progress', authMiddleware, async (req, res) => {
   try {
-    const { module, score, total } = req.body;
+    const { module, score, total, minutes } = req.body;
+    
+    const safeMinutes = Number.isFinite(minutes) ? Math.max(0, Math.min(minutes, 60)) : 0;
+    
     const progress = new Progress({
       userId: String(req.user.userId),
-      module,
-      score,
-      total
+      module: module || 'session',
+      score: score || 0,
+      total: total || 0,
+      minutes: safeMinutes,
+      timestamp: new Date()
     });
+    
     await progress.save();
     res.json({ success: true, message: 'Progress saved!' });
   } catch (error) {
@@ -194,29 +333,55 @@ app.get('/api/progress/me', authMiddleware, async (req, res) => {
   }
 });
 
+// ✅ UPDATED: Weekly API now uses SessionTracking
 app.get('/api/progress/me/weekly', authMiddleware, async (req, res) => {
   try {
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    const timezone = 'Asia/Karachi';
+    const today = new Date();
+    const pakToday = new Date(today.toLocaleString('en-US', { timeZone: timezone }));
+    const sevenDaysAgo = new Date(pakToday);
+    sevenDaysAgo.setDate(pakToday.getDate() - 6);
+    
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+    pakToday.setHours(23, 59, 59, 999);
+    
+    // Build date range array
+    const dateRange = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(sevenDaysAgo);
+      d.setDate(sevenDaysAgo.getDate() + i);
+      const dateKey = d.toISOString().split('T')[0];
+      dateRange.push(dateKey);
+    }
+    
+    // Fetch from SessionTracking
+    const sessions = await SessionTracking.find({
+      userId: String(req.user.userId),
+      date: { $in: dateRange }
+    });
 
-    const weeklyProgress = await Progress.aggregate([
-      {
-        $match: {
-          userId: String(req.user.userId),
-          timestamp: { $gte: oneWeekAgo }
-        }
-      },
-      {
-        $group: {
-          _id: { $dayOfWeek: "$timestamp" },
-          totalMinutes: { $sum: "$score" },
-          count: { $sum: 1 }
-        }
-      }
-    ]);
-
-    res.json(weeklyProgress);
+    // Build response
+    const response = [];
+    const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    
+    dateRange.forEach((dateKey, index) => {
+      const d = new Date(dateKey + 'T00:00:00+05:00');
+      const jsDay = d.getDay();
+      const session = sessions.find(s => s.date === dateKey);
+      
+      response.push({
+        _id: jsDay === 0 ? 1 : jsDay + 1,
+        day: dateKey,
+        label: daysOfWeek[jsDay],
+        totalMinutes: session ? Math.min(session.minutes || 0, 1440) : 0,
+        unflushedSeconds: session ? (session.unflushedSeconds || 0) : 0,
+        count: session ? 1 : 0
+      });
+    });
+    
+    res.json(response);
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -247,13 +412,12 @@ app.get('/api/achievements/me', authMiddleware, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-// ✅ LESSON PROGRESS APIs
+
 app.post('/api/lessons/:id/progress', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const { progress } = req.body;
 
-    // Update lesson progress
     const updatedLesson = await Lesson.findByIdAndUpdate(
       id,
       { progress },
@@ -264,7 +428,6 @@ app.post('/api/lessons/:id/progress', authMiddleware, async (req, res) => {
       return res.status(404).json({ error: 'Lesson not found' });
     }
 
-    // ✅ Save to progress tracking
     const progressRecord = new Progress({
       userId: String(req.user.userId),
       module: "lesson",
@@ -285,7 +448,6 @@ app.post('/api/lessons/:id/progress', authMiddleware, async (req, res) => {
   }
 });
 
-// ✅ Get user's lesson progress
 app.get('/api/lessons/progress/me', authMiddleware, async (req, res) => {
   try {
     const lessons = await Lesson.find();
@@ -316,12 +478,10 @@ app.get('/api/lessons/progress/me', authMiddleware, async (req, res) => {
   }
 });
 
-//  Register Route
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({
@@ -330,10 +490,8 @@ app.post('/api/auth/register', async (req, res) => {
       });
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create new user
     const newUser = new User({
       name,
       email,
@@ -345,7 +503,6 @@ app.post('/api/auth/register', async (req, res) => {
 
     await newUser.save();
 
-    // Generate JWT token
     const token = jwt.sign(
       { userId: newUser._id, email: newUser.email },
       JWT_SECRET,
@@ -375,12 +532,10 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-//  Login Route
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Find user
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(400).json({
@@ -389,7 +544,6 @@ app.post('/api/auth/login', async (req, res) => {
       });
     }
 
-    // Check password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(400).json({
@@ -398,7 +552,6 @@ app.post('/api/auth/login', async (req, res) => {
       });
     }
 
-    // Generate JWT token
     const token = jwt.sign(
       { userId: user._id, email: user.email },
       JWT_SECRET,
@@ -428,8 +581,6 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-
-//  Forgot Password Route with Real Email
 app.post('/api/auth/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
@@ -445,7 +596,6 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 
     const user = await User.findOne({ email: email.toLowerCase() });
 
-    // Security ke liye user exists ya nahi, same response
     const responseMessage = 'If an account exists with this email, a reset link has been sent';
 
     if (!user) {
@@ -455,18 +605,15 @@ app.post('/api/auth/forgot-password', async (req, res) => {
       });
     }
 
-    // Generate reset token
     const resetToken = jwt.sign(
       { userId: user._id, email: user.email, type: 'password_reset' },
       JWT_SECRET,
       { expiresIn: '1h' }
     );
 
-    // Frontend URL (Vite default)
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`;
 
-    //  Send Real Email
     try {
       const transporter = createTransporter();
 
@@ -524,11 +671,10 @@ app.post('/api/auth/forgot-password', async (req, res) => {
       };
 
       await transporter.sendMail(mailOptions);
-      console.log(' Password reset email sent to:', email);
+      console.log('✅ Password reset email sent to:', email);
 
     } catch (emailError) {
       console.error('❌ Email sending failed:', emailError);
-      // Email fail hone par bhi security ke liye success response
     }
 
     res.json({
@@ -545,7 +691,6 @@ app.post('/api/auth/forgot-password', async (req, res) => {
   }
 });
 
-//  Reset Password Route
 app.post('/api/auth/reset-password', async (req, res) => {
   try {
     const { token, password } = req.body;
@@ -566,7 +711,6 @@ app.post('/api/auth/reset-password', async (req, res) => {
       });
     }
 
-    //  Verify reset token
     const decoded = jwt.verify(token, JWT_SECRET);
 
     if (decoded.type !== 'password_reset') {
@@ -576,7 +720,6 @@ app.post('/api/auth/reset-password', async (req, res) => {
       });
     }
 
-    //  Find user
     const user = await User.findById(decoded.userId);
     if (!user) {
       return res.status(400).json({
@@ -585,10 +728,8 @@ app.post('/api/auth/reset-password', async (req, res) => {
       });
     }
 
-    //  Hash new password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    //  Update password
     user.password = hashedPassword;
     await user.save();
 
@@ -623,13 +764,11 @@ app.post('/api/auth/reset-password', async (req, res) => {
   }
 });
 
-//  Dark Mode Toggle Route - Server.js mein add karo
 app.put('/api/users/:email/darkmode', async (req, res) => {
   try {
     const { email } = req.params;
     const { enabled } = req.body;
 
-    // User ko find karo aur update karo
     const user = await User.findOneAndUpdate(
       { email: email },
       { darkMode: enabled },
@@ -658,7 +797,6 @@ app.put('/api/users/:email/darkmode', async (req, res) => {
   }
 });
 
-// Save progress
 app.post('/api/conversation/save-progress', authMiddleware, async (req, res) => {
   try {
     const { scenarioId, messageCount, duration } = req.body;
@@ -679,12 +817,10 @@ app.post('/api/conversation/save-progress', authMiddleware, async (req, res) => 
   }
 });
 
-// Root route (for health checks / load balancers that hit /)
 app.get("/", (req, res) => {
   res.status(200).send("OK");
 });
 
-// Health Check
 app.get("/health", (req, res) => {
   res.send("Server running & DB connected");
 });

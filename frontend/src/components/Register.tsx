@@ -3,10 +3,9 @@ import type { Page } from '../App';
 
 interface RegisterProps {
   onNavigate: (page: Page) => void;
-  onLogin: (user: any, token: string) => void;
 }
 
-export const Register: React.FC<RegisterProps> = ({ onNavigate, onLogin }) => {
+export const Register: React.FC<RegisterProps> = ({ onNavigate }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const API_URL = import.meta.env.VITE_API_URL;
@@ -15,6 +14,15 @@ export const Register: React.FC<RegisterProps> = ({ onNavigate, onLogin }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false); //  Success state add karo
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (!loading) {
+        handleRegister();
+      }
+    }
+  };
 
   const handleRegister = async () => {
     if (!name || !email || !password) {
@@ -105,6 +113,7 @@ export const Register: React.FC<RegisterProps> = ({ onNavigate, onLogin }) => {
           placeholder="Full Name"
           value={name}
           onChange={(e) => setName(e.target.value)}
+          onKeyDown={handleKeyDown}
           className="w-full p-3 mb-4 border border-white/30 rounded-lg bg-white text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-400"
         />
 
@@ -113,6 +122,7 @@ export const Register: React.FC<RegisterProps> = ({ onNavigate, onLogin }) => {
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          onKeyDown={handleKeyDown}
           className="w-full p-3 mb-4 border border-white/30 rounded-lg bg-white text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-400"
         />
 
@@ -122,6 +132,7 @@ export const Register: React.FC<RegisterProps> = ({ onNavigate, onLogin }) => {
             placeholder="Password (min. 6 characters)"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={handleKeyDown}
             className="w-full p-3 border border-white/30 rounded-lg bg-white text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-400"
           />
           <button

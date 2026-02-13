@@ -17,11 +17,14 @@ export const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
   const [tempEmail, setTempEmail] = useState(user.email || '');
 
   const handleLogout = () => {
-    localStorage.clear();
-    if (onLogout) {
-      onLogout();
-    } else {
-      window.location.href = '/login';
+// Only remove authentication data, keep progress tracking
+localStorage.removeItem('token');
+localStorage.removeItem('user');
+
+if (onLogout) {
+onLogout();
+} else {
+window.location.href = '/login';
     }
   };
 

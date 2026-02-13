@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { ThemeProvider, useTheme } from './ThemeContext';
 import { UserProvider } from './UserContext'; // ✅ Added this import
+import { useProgressTracking } from './hooks/useProgressTracking';
 import { Navigation } from './components/Navigation';
 import { Dashboard } from './components/Dashboard';
 import { ConversationLessons } from './components/ConversationLessons';
@@ -30,6 +31,9 @@ function AppContent() {
   const [currentPage, setCurrentPage] = useState<Page>('login');
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  
+  // Global progress tracking - works across all pages
+  useProgressTracking();
 
   useEffect(() => {
     if (window.location.pathname.includes("reset-password")) {
@@ -54,7 +58,7 @@ function AppContent() {
   const renderPage = () => {
     switch (currentPage) {
       case 'login': return <Login onNavigate={setCurrentPage} onLogin={handleLogin} />;
-      case 'register': return <Register onNavigate={setCurrentPage} onLogin={handleLogin} />;
+      case 'register': return <Register onNavigate={setCurrentPage} />;
       case 'forgot': return <ForgotPassword onNavigate={setCurrentPage} />;
       case 'reset-password': return <ResetPassword onNavigate={setCurrentPage} />;
       case 'dashboard': return <Dashboard onNavigate={setCurrentPage} />;
@@ -63,7 +67,7 @@ function AppContent() {
       case 'library': return <LessonLibrary />;
       case 'grammar': return <GrammarVocab />;
       case 'progress': return <Progress />;
-      case 'settings': return <Settings onLogout={handleLogout} />; // ✅ Proper prop passing
+      case 'settings': return <Settings onLogout={handleLogout} />;
       default: return <Dashboard onNavigate={setCurrentPage} />;
     }
   };
