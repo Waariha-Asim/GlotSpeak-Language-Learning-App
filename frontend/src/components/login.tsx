@@ -10,6 +10,7 @@ interface LoginProps {
 }
 
 export const Login: React.FC<LoginProps> = ({ onNavigate, onLogin }) => {
+  const API_URL = import.meta.env.VITE_API_URL;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -27,7 +28,7 @@ export const Login: React.FC<LoginProps> = ({ onNavigate, onLogin }) => {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+      const response = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

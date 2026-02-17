@@ -6,6 +6,7 @@ interface ResetPasswordProps {
 }
 
 export const ResetPassword: React.FC<ResetPasswordProps> = ({ onNavigate }) => {
+  const API_URL = import.meta.env.VITE_API_URL;
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -41,7 +42,7 @@ export const ResetPassword: React.FC<ResetPasswordProps> = ({ onNavigate }) => {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/auth/reset-password', {
+      const response = await fetch(`${API_URL}/api/auth/reset-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

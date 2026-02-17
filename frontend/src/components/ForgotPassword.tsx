@@ -9,6 +9,7 @@ interface ForgotPasswordProps {
 }
 
 export const ForgotPassword: React.FC<ForgotPasswordProps> = ({ onNavigate }) => {
+  const API_URL = import.meta.env.VITE_API_URL;
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -24,7 +25,7 @@ export const ForgotPassword: React.FC<ForgotPasswordProps> = ({ onNavigate }) =>
     setError('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/forgot-password', {
+      const response = await fetch(`${API_URL}/api/auth/forgot-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
