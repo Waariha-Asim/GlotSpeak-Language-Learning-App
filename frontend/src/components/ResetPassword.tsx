@@ -14,15 +14,6 @@ export const ResetPassword: React.FC<ResetPasswordProps> = ({ onNavigate }) => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      if (!loading) {
-        handleResetPassword();
-      }
-    }
-  };
-
   const handleResetPassword = async () => {
     if (!password || !confirmPassword) {
       setError('Please fill all fields');
@@ -136,7 +127,6 @@ export const ResetPassword: React.FC<ResetPasswordProps> = ({ onNavigate }) => {
             placeholder="New Password (min. 6 characters)"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            onKeyDown={handleKeyDown}
             className="w-full p-3 border border-white/30 rounded-lg bg-white text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-400"
           />
           <button
@@ -153,7 +143,6 @@ export const ResetPassword: React.FC<ResetPasswordProps> = ({ onNavigate }) => {
           placeholder="Confirm New Password"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
-          onKeyDown={handleKeyDown}
           className="w-full p-3 mb-4 border border-white/30 rounded-lg bg-white text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-400"
         />
 

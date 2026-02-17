@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import type { Page } from '../App';
 
+// Step 1: Tell the app where the logo image is located
+import logo from '../assets/images/glotspeak_logo.png';
+
 interface LoginProps {
   onNavigate: (page: Page) => void;
   onLogin: (user: any, token: string) => void;
@@ -13,16 +16,7 @@ export const Login: React.FC<LoginProps> = ({ onNavigate, onLogin }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false); //  Success state add karo
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      if (!loading) {
-        handleLogin();
-      }
-    }
-  };
+  const [success, setSuccess] = useState(false);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -45,16 +39,12 @@ export const Login: React.FC<LoginProps> = ({ onNavigate, onLogin }) => {
       const data = await response.json();
 
       if (data.success) {
-        //  Success message show karo
         setSuccess(true);
-        
-        //  2 seconds baad automatically dashboard pe redirect with login
         setTimeout(() => {
           localStorage.setItem('token', data.token);
           localStorage.setItem('user', JSON.stringify(data.user));
           onLogin(data.user, data.token);
         }, 2000);
-        
       } else {
         setError(data.message || 'Invalid email or password');
       }
@@ -66,15 +56,13 @@ export const Login: React.FC<LoginProps> = ({ onNavigate, onLogin }) => {
     }
   };
 
-  //  Agar success hai toh success message dikhao
   if (success) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-teal-500 p-4">
-        <h1 className="text-3xl font-bold text-white mb-6 text-center">
-          Glotspeak
-        </h1>
+        {/* Logo also placed here for branding consistency during success */}
+        <img src={logo} alt="GlotSpeak Logo" className="h-16 w-auto mb-8 drop-shadow-lg" />
 
-        <div className="bg-white/10 backdrop-blur-lg shadow-lg rounded-2xl p-6 w-full max-w-sm text-center">
+        <div className="bg-white/10 backdrop-blur-lg shadow-lg rounded-2xl p-6 w-full max-w-sm text-center border border-white/20">
           <div className="text-green-400 text-6xl mb-4">✓</div>
           <h2 className="text-2xl font-bold text-white mb-2">Login Successful!</h2>
           <p className="text-purple-100 mb-6">
@@ -90,11 +78,17 @@ export const Login: React.FC<LoginProps> = ({ onNavigate, onLogin }) => {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-teal-500 p-4">
-      <h1 className="text-3xl font-bold text-white mb-6 text-center">
-        Glotspeak
-      </h1>
+      
+      {/* Step 2: The Logo Replacement */}
+      <div className="flex flex-col items-center mb-8">
+        <img 
+          src={logo} 
+          alt="GlotSpeak Logo" 
+          className="h-14 w-auto drop-shadow-xl hover:scale-105 transition-transform duration-300" 
+        />
+      </div>
 
-      <div className="bg-white/10 backdrop-blur-lg shadow-lg rounded-2xl p-6 w-full max-w-sm">
+      <div className="bg-white/10 backdrop-blur-lg shadow-lg rounded-2xl p-6 w-full max-w-sm border border-white/20">
         {error && (
           <div className="bg-red-500/20 border border-red-500 text-white p-3 rounded-lg mb-4 text-sm">
             {error}
@@ -106,7 +100,6 @@ export const Login: React.FC<LoginProps> = ({ onNavigate, onLogin }) => {
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          onKeyDown={handleKeyDown}
           className="w-full p-3 mb-4 border border-white/30 rounded-lg bg-white text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-400"
         />
 
@@ -116,7 +109,6 @@ export const Login: React.FC<LoginProps> = ({ onNavigate, onLogin }) => {
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            onKeyDown={handleKeyDown}
             className="w-full p-3 border border-white/30 rounded-lg bg-white text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-400"
           />
           <button
@@ -131,7 +123,7 @@ export const Login: React.FC<LoginProps> = ({ onNavigate, onLogin }) => {
         <button
           onClick={handleLogin}
           disabled={loading}
-          className={`w-full bg-gradient-to-r from-amber-400 to-orange-500 text-white py-3 rounded-2xl hover:shadow-xl transition-all mb-4 ${
+          className={`w-full bg-gradient-to-r from-amber-400 to-orange-500 text-white py-3 rounded-2xl font-bold hover:shadow-xl transition-all mb-4 ${
             loading ? 'opacity-50 cursor-not-allowed' : ''
           }`}
         >
@@ -141,14 +133,14 @@ export const Login: React.FC<LoginProps> = ({ onNavigate, onLogin }) => {
         <div className="flex justify-between text-sm text-white/80">
           <button 
             onClick={() => onNavigate('forgot')} 
-            className="underline"
+            className="hover:text-white transition-colors"
             disabled={loading}
           >
             Forgot Password?
           </button>
           <button 
             onClick={() => onNavigate('register')} 
-            className="underline"
+            className="font-bold text-white hover:underline transition-all"
             disabled={loading}
           >
             Sign Up

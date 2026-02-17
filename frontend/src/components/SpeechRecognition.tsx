@@ -77,6 +77,7 @@ const getPPA = (word: string) => word.toLowerCase().replace(/tion/g, 'shun').rep
 
 export const SpeechRecognition: React.FC = () => {
   const { darkMode } = useTheme();
+  const API_URL = import.meta.env.VITE_API_URL;
 
   const [currentExercise, setCurrentExercise] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
@@ -212,7 +213,7 @@ export const SpeechRecognition: React.FC = () => {
         const token = localStorage.getItem('token');
         if (!token) return;
 
-        await fetch('http://localhost:5000/api/progress', {
+        await fetch(`${API_URL}/api/progress`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

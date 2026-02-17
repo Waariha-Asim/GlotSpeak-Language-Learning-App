@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { ThemeProvider, useTheme } from './ThemeContext';
 import { UserProvider } from './UserContext'; // ✅ Added this import
 import { useProgressTracking } from './hooks/useProgressTracking';
@@ -30,7 +30,6 @@ function AppContent() {
   const { darkMode } = useTheme();
   const [currentPage, setCurrentPage] = useState<Page>('login');
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   
   // Global progress tracking - works across all pages
   useProgressTracking();
@@ -43,13 +42,12 @@ function AppContent() {
 
   const handleLogin = (userData: User, authToken: string) => {
     setUser(userData);
-    setToken(authToken);
+    localStorage.setItem('token', authToken);
     setCurrentPage('dashboard');
   };
 
   const handleLogout = () => {
     setUser(null);
-    setToken(null);
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setCurrentPage('login');
