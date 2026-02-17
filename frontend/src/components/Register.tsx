@@ -6,9 +6,9 @@ interface RegisterProps {
 }
 
 export const Register: React.FC<RegisterProps> = ({ onNavigate }) => {
+  const API_URL = import.meta.env.VITE_API_URL;
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const API_URL = import.meta.env.VITE_API_URL;
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
