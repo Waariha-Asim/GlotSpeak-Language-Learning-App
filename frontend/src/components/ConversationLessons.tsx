@@ -3,6 +3,8 @@ import { ArrowLeft, RotateCcw, RefreshCcw, Trash, MessageCircle, User, Bot, Send
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { useTheme } from '../ThemeContext';
 
+
+
 // Initialize Gemini safely
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
@@ -1464,170 +1466,179 @@ Keep practicing to improve your English skills!`;
         </div>
       </div>
 
-      <div className={`rounded-[32px] shadow-xl mb-4 overflow-hidden border ${darkMode ? 'bg-[#1e293b] border-gray-700' : 'bg-white border-gray-100'}`}>
-        <div className={`p-4 border-b ${darkMode ? 'border-gray-800 bg-gray-900/20' : 'border-gray-50 bg-gray-50/30'}`}>
-          <p className={`text-sm italic ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>"{subTopic?.description}"</p>
-        </div>
+      {/* ===== FIX 1 & 2: Added flex containers for proper layout ===== */}
+      <div className="flex flex-col h-[calc(100vh-250px)] max-w-4xl mx-auto">
+        <div className={`flex-1 flex flex-col rounded-[32px] shadow-xl overflow-hidden border ${darkMode ? 'bg-[#1e293b] border-gray-700' : 'bg-white border-gray-100'}`}>
+          <div className={`p-4 border-b ${darkMode ? 'border-gray-800 bg-gray-900/20' : 'border-gray-50 bg-gray-50/30'}`}>
+            <p className={`text-sm italic ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>"{subTopic?.description}"</p>
+          </div>
 
-        <div className="p-6 space-y-6 h-[400px] overflow-y-auto">
-          {messages.map((message, index) => (
-            <div key={index} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`flex items-start gap-3 max-w-[85%] ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm ${message.role === 'user' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}`}>{message.role === 'user' ? <User size={18} /> : <Bot size={18} />}</div>
-                <div>
-                  <div className={`p-4 rounded-2xl shadow-sm relative group ${message.role === 'user' ? 'bg-purple-600 text-white rounded-tr-none' : darkMode ? 'bg-gray-800 border border-gray-700 text-white rounded-tl-none' : 'bg-white border border-gray-200 text-gray-800 rounded-tl-none'}`}>
-                    {message.role === 'user' && editingIndex === index ? (
-                      <>
-                        <textarea
-                          value={editingText}
-                          onChange={(e) => setEditingText(e.target.value)}
-                          className={`w-full text-sm leading-relaxed rounded-lg p-2 focus:outline-none ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-gray-800'}`}
-                          rows={2}
-                        />
-                        <div className="flex gap-2 mt-2">
-                          <button onClick={saveEditing} className="px-3 py-1 text-xs font-bold rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 active:scale-95">Save</button>
-                          <button onClick={cancelEditing} className={`px-3 py-1 text-xs font-bold rounded-lg ${darkMode ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'} active:scale-95`}>Cancel</button>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <p className="text-sm leading-relaxed pr-10">{message.role === 'user' ? message.text : message.reply}</p>
-                        {message.role === 'user' && (
+          {/* ===== FIX 3: Changed h-[400px] to flex-1 for flexible height ===== */}
+          <div className="flex-1 p-6 space-y-6 overflow-y-auto">
+            {messages.map((message, index) => (
+              <div key={index} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`flex items-start gap-3 max-w-[85%] ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm ${message.role === 'user' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}`}>{message.role === 'user' ? <User size={18} /> : <Bot size={18} />}</div>
+                  <div>
+                    <div className={`p-4 rounded-2xl shadow-sm relative group ${message.role === 'user' ? 'bg-purple-600 text-white rounded-tr-none' : darkMode ? 'bg-gray-800 border border-gray-700 text-white rounded-tl-none' : 'bg-white border border-gray-200 text-gray-800 rounded-tl-none'}`}>
+                      {message.role === 'user' && editingIndex === index ? (
+                        <>
+                          <textarea
+                            value={editingText}
+                            onChange={(e) => setEditingText(e.target.value)}
+                            className={`w-full text-sm leading-relaxed rounded-lg p-2 focus:outline-none ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-gray-800'}`}
+                            rows={2}
+                          />
+                          <div className="flex gap-2 mt-2">
+                            <button onClick={saveEditing} className="px-3 py-1 text-xs font-bold rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 active:scale-95">Save</button>
+                            <button onClick={cancelEditing} className={`px-3 py-1 text-xs font-bold rounded-lg ${darkMode ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'} active:scale-95`}>Cancel</button>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-sm leading-relaxed pr-10">{message.role === 'user' ? message.text : message.reply}</p>
+                          {message.role === 'user' && (
+                            <button
+                              onClick={() => startEditing(index, message.text)}
+                              className={`absolute right-8 top-2 p-1 rounded-full transition-all ${message.role === 'user'
+                                ? 'text-purple-300 hover:text-white opacity-0 group-hover:opacity-100'
+                                : 'text-gray-400 hover:text-purple-500 opacity-0 group-hover:opacity-100'
+                                }`}
+                              title="Edit message"
+                            >
+                              <Edit3 size={14} />
+                            </button>
+                          )}
                           <button
-                            onClick={() => startEditing(index, message.text)}
-                            className={`absolute right-8 top-2 p-1 rounded-full transition-all ${message.role === 'user'
-                              ? 'text-purple-300 hover:text-white opacity-0 group-hover:opacity-100'
-                              : 'text-gray-400 hover:text-purple-500 opacity-0 group-hover:opacity-100'
+                            onClick={() => speak(message.role === 'user' ? message.text : message.reply, index)}
+                            className={`absolute right-2 top-2 p-1 rounded-full transition-all ${isPlaying === index
+                              ? 'text-emerald-400 scale-110'
+                              : message.role === 'user'
+                                ? 'text-purple-300 hover:text-white opacity-0 group-hover:opacity-100'
+                                : 'text-gray-400 hover:text-purple-500 opacity-0 group-hover:opacity-100'
                               }`}
-                            title="Edit message"
+                            title="Listen to message"
                           >
-                            <Edit3 size={14} />
+                            <Volume2 size={14} className={isPlaying === index ? 'animate-pulse' : ''} />
                           </button>
-                        )}
-                        <button
-                          onClick={() => speak(message.role === 'user' ? message.text : message.reply, index)}
-                          className={`absolute right-2 top-2 p-1 rounded-full transition-all ${isPlaying === index
-                            ? 'text-emerald-400 scale-110'
-                            : message.role === 'user'
-                              ? 'text-purple-300 hover:text-white opacity-0 group-hover:opacity-100'
-                              : 'text-gray-400 hover:text-purple-500 opacity-0 group-hover:opacity-100'
-                            }`}
-                          title="Listen to message"
-                        >
-                          <Volume2 size={14} className={isPlaying === index ? 'animate-pulse' : ''} />
-                        </button>
-                      </>
+                        </>
+                      )}
+                    </div>
+                    {message.role === 'user' && message.correction && (
+                      <div className={`mt-2 p-3 rounded-lg border text-sm ${darkMode ? 'border-emerald-500/40 bg-emerald-900/20' : 'border-emerald-200 bg-emerald-50'}`}>
+                        <div className="flex items-center gap-2 font-semibold text-emerald-500 mb-2">
+                          <span>✓</span>
+                          <span>Correct Answer</span>
+                        </div>
+                        <div className="space-y-2">
+                          <div>
+                            <span className={`font-bold pr-2 ${darkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>Ideal:</span>
+                            <span className={`leading-relaxed ${darkMode ? 'text-emerald-100' : 'text-emerald-800'}`}>{message.correction.ideal}</span>
+                          </div>
+                          {message.correction.feedback && (
+                            <div>
+                              <span className={`font-bold pr-2 ${darkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>Feedback:</span>
+                              <span className={`leading-relaxed ${darkMode ? 'text-emerald-100' : 'text-emerald-800'}`}>{message.correction.feedback}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    {message.role === 'ai' && bridgeMode && message.translation && <div className={`mt-2 text-sm italic ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>🌍 Urdu: {message.translation}</div>}
+                    {message.role === 'ai' && message.hint && (
+                      <div className={`mt-4 p-4 border border-dashed rounded-lg ${darkMode ? 'border-gray-600 bg-gray-800/50' : 'border-gray-300 bg-gray-50'}`}>
+                        <h4 className={`font-bold mb-2 text-xs uppercase tracking-wider ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>💡 Try Saying:</h4>
+                        <p className={`mb-3 text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>"{message.hint}"</p>
+                        <button onClick={() => sendMessage(message.hint)} className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 transition-all active:scale-95">Use This Reply</button>
+                      </div>
                     )}
                   </div>
-                  {message.role === 'user' && message.correction && (
-                    <div className={`mt-2 p-3 rounded-lg border text-sm ${darkMode ? 'border-emerald-500/40 bg-emerald-900/20' : 'border-emerald-200 bg-emerald-50'}`}>
-                      <div className="flex items-center gap-2 font-semibold text-emerald-500 mb-2">
-                        <span>✓</span>
-                        <span>Correct Answer</span>
-                      </div>
-                      <div className="space-y-2">
-                        <div>
-                          <span className={`font-bold pr-2 ${darkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>Ideal:</span>
-                          <span className={`leading-relaxed ${darkMode ? 'text-emerald-100' : 'text-emerald-800'}`}>{message.correction.ideal}</span>
-                        </div>
-                        {message.correction.feedback && (
-                          <div>
-                            <span className={`font-bold pr-2 ${darkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>Feedback:</span>
-                            <span className={`leading-relaxed ${darkMode ? 'text-emerald-100' : 'text-emerald-800'}`}>{message.correction.feedback}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  {message.role === 'ai' && bridgeMode && message.translation && <div className={`mt-2 text-sm italic ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>🌍 Urdu: {message.translation}</div>}
-                  {message.role === 'ai' && message.hint && (
-                    <div className={`mt-4 p-4 border border-dashed rounded-lg ${darkMode ? 'border-gray-600 bg-gray-800/50' : 'border-gray-300 bg-gray-50'}`}>
-                      <h4 className={`font-bold mb-2 text-xs uppercase tracking-wider ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>💡 Try Saying:</h4>
-                      <p className={`mb-3 text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>"{message.hint}"</p>
-                      <button onClick={() => sendMessage(message.hint)} className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 transition-all active:scale-95">Use This Reply</button>
-                    </div>
-                  )}
                 </div>
               </div>
-            </div>
-          ))}
-          {isLoading && <div className="flex justify-start"><div className={`flex items-center space-x-3 p-4 rounded-2xl ${darkMode ? 'bg-gray-800 text-gray-400' : 'bg-gray-100 text-gray-500'}`}><Loader className="animate-spin" size={16} /><span className="text-sm font-medium">Thinking...</span></div></div>}
-          <div ref={messagesEndRef} />
-        </div>
+            ))}
+            {isLoading && <div className="flex justify-start"><div className={`flex items-center space-x-3 p-4 rounded-2xl ${darkMode ? 'bg-gray-800 text-gray-400' : 'bg-gray-100 text-gray-500'}`}><Loader className="animate-spin" size={16} /><span className="text-sm font-medium">Thinking...</span></div></div>}
+            <div ref={messagesEndRef} />
+          </div>
 
-        <div className={`p-6 border-t ${darkMode ? 'border-gray-800 bg-gray-900/20' : 'border-gray-50'}`}>
-          <div className="flex flex-col items-center space-y-4">
-            {voiceSupported ? (
-              <>
-                <div className="w-full max-w-md flex items-center gap-2">
-                  <button
-                    onClick={retryVoiceInput}
-                    className={`h-16 px-4 rounded-2xl flex items-center justify-center gap-2 text-sm font-semibold transition-all ${darkMode ? 'bg-gray-800 text-gray-200 hover:bg-gray-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-                  >
-                    <RefreshCcw size={18} />
-                    <span>Retry</span>
-                  </button>
-                  <button
-                    onClick={toggleVoiceInput}
-                    className={`flex-1 h-16 flex items-center justify-center text-white rounded-2xl transition-all shadow-lg shadow-emerald-100 dark:shadow-none active:scale-95 text-lg font-bold ${isRecording ? 'bg-rose-500 hover:bg-rose-600' : 'bg-emerald-500 hover:bg-emerald-600'} disabled:opacity-50 disabled:cursor-not-allowed`}
-                  >
-                    {isRecording ? (
-                      <Loader size={24} className="mr-2 animate-spin" />
-                    ) : (
-                      <Mic size={24} className="mr-2" />
-                    )}
-                    {isRecording ? 'Listening...' : 'Speak to Type'}
-                  </button>
-                  <button
-                    onClick={clearVoiceInput}
-                    className={`h-16 px-4 rounded-2xl flex items-center justify-center gap-2 text-sm font-semibold transition-all ${darkMode ? 'bg-gray-800 text-gray-200 hover:bg-gray-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} disabled:opacity-50 disabled:cursor-not-allowed`}
-                    disabled={!inputText.trim()}
-                  >
-                    <Trash size={18} />
-                    <span>Clear</span>
-                  </button>
-                </div>
-                <span className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                  Voice captures fill the text box so you can review before sending.
-                </span>
-              </>
-            ) : (
-              <button
-                onClick={toggleVoiceInput}
-                disabled
-                className={`w-full max-w-md h-16 flex items-center justify-center text-white rounded-2xl transition-all shadow-lg shadow-emerald-100 dark:shadow-none text-lg font-bold bg-gray-500/60 cursor-not-allowed`}
-              >
-                <Mic size={24} className="mr-2" />
-                Voice input unavailable
-              </button>
-            )}
-            <div className="flex items-center w-full max-w-md space-x-3">
-              <button onClick={resetConversation} className={`p-2.5 rounded-full transition-colors flex items-center justify-center ${darkMode ? 'bg-gray-800 text-gray-400 hover:text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}><RotateCcw size={20} /></button>
-              <input
-                type="text"
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey && inputText.trim() && !isLoading) {
-                    e.preventDefault();
-                    sendMessage();
-                  }
-                }}
-                placeholder="Type your response..."
-                className={`flex-1 px-5 py-3.5 rounded-2xl border-none outline-none text-sm transition-all focus:ring-2 focus:ring-purple-500/20 ${darkMode ? 'bg-gray-800 text-white placeholder-gray-500' : 'bg-gray-100 text-gray-800 placeholder-gray-400'}`}
-                disabled={isLoading}
-              />
-              <button
-                className={`p-2.5 rounded-full transition-colors flex items-center justify-center ${darkMode ? 'bg-purple-600 text-white hover:bg-purple-700' : 'bg-purple-600 text-white hover:bg-purple-700'} disabled:opacity-50 disabled:cursor-not-allowed`}
-                onClick={() => sendMessage()}
-                disabled={isLoading || !inputText.trim()}
-              >
-                <Send size={20} />
-              </button>
+          {/* ===== FIX 4: Changed p-6 to p-4, added flex-shrink-0 ===== */}
+          <div className={`p-4 border-t flex-shrink-0 ${darkMode ? 'border-gray-800 bg-gray-900/95' : 'border-gray-50 bg-white'}`}>
+            <div className="flex flex-col items-center space-y-4">
+              {voiceSupported ? (
+                <>
+                  <div className="w-full max-w-md flex items-center gap-2">
+                    {/* ===== FIX 5: Changed h-16 to h-12, px-4 to px-3, size to 16, added hidden sm:inline ===== */}
+                    <button
+                      onClick={retryVoiceInput}
+                      className={`h-12 px-3 rounded-2xl flex items-center justify-center gap-2 text-sm font-semibold transition-all ${darkMode ? 'bg-gray-800 text-gray-200 hover:bg-gray-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                    >
+                      <RefreshCcw size={16} />
+                      <span className="hidden sm:inline">Retry</span>
+                    </button>
+                    {/* ===== FIX 6: Changed h-16 to h-12, size 24 to 18 ===== */}
+                    <button
+                      onClick={toggleVoiceInput}
+                      className={`flex-1 h-12 flex items-center justify-center text-white rounded-2xl transition-all shadow-lg shadow-emerald-100 dark:shadow-none active:scale-95 text-lg font-bold ${isRecording ? 'bg-rose-500 hover:bg-rose-600' : 'bg-emerald-500 hover:bg-emerald-600'} disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
+                      {isRecording ? (
+                        <Loader size={18} className="mr-2 animate-spin" />
+                      ) : (
+                        <Mic size={18} className="mr-2" />
+                      )}
+                      {isRecording ? 'Listening...' : 'Speak to Type'}
+                    </button>
+                    {/* ===== FIX 7: Changed h-16 to h-12, px-4 to px-3, size to 16, added hidden sm:inline ===== */}
+                    <button
+                      onClick={clearVoiceInput}
+                      className={`h-12 px-3 rounded-2xl flex items-center justify-center gap-2 text-sm font-semibold transition-all ${darkMode ? 'bg-gray-800 text-gray-200 hover:bg-gray-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} disabled:opacity-50 disabled:cursor-not-allowed`}
+                      disabled={!inputText.trim()}
+                    >
+                      <Trash size={16} />
+                      <span className="hidden sm:inline">Clear</span>
+                    </button>
+                  </div>
+                  <span className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                    Voice captures fill the text box so you can review before sending.
+                  </span>
+                </>
+              ) : (
+                <button
+                  onClick={toggleVoiceInput}
+                  disabled
+                  className={`w-full max-w-md h-12 flex items-center justify-center text-white rounded-2xl transition-all shadow-lg shadow-emerald-100 dark:shadow-none text-lg font-bold bg-gray-500/60 cursor-not-allowed`}
+                >
+                  <Mic size={18} className="mr-2" />
+                  Voice input unavailable
+                </button>
+              )}
+              <div className="flex items-center w-full max-w-md space-x-3">
+                <button onClick={resetConversation} className={`p-2.5 rounded-full transition-colors flex items-center justify-center ${darkMode ? 'bg-gray-800 text-gray-400 hover:text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}><RotateCcw size={20} /></button>
+                <input
+                  type="text"
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey && inputText.trim() && !isLoading) {
+                      e.preventDefault();
+                      sendMessage();
+                    }
+                  }}
+                  placeholder="Type your response..."
+                  className={`flex-1 px-5 py-3.5 rounded-2xl border-none outline-none text-sm transition-all focus:ring-2 focus:ring-purple-500/20 ${darkMode ? 'bg-gray-800 text-white placeholder-gray-500' : 'bg-gray-100 text-gray-800 placeholder-gray-400'}`}
+                  disabled={isLoading}
+                />
+                <button
+                  className={`p-2.5 rounded-full transition-colors flex items-center justify-center ${darkMode ? 'bg-purple-600 text-white hover:bg-purple-700' : 'bg-purple-600 text-white hover:bg-purple-700'} disabled:opacity-50 disabled:cursor-not-allowed`}
+                  onClick={() => sendMessage()}
+                  disabled={isLoading || !inputText.trim()}
+                >
+                  <Send size={20} />
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
+      {/* ===== FIX 8: Added 2 closing divs for the new containers ===== */}
 
       {showFeedback && (
         <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-300">
