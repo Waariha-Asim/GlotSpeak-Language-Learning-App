@@ -40,6 +40,19 @@ GlotSpeak offers a wide range of features for effective language learning:
 - AI provides feedback by appreciating responses, highlighting mistakes, and suggesting ideal replies.  
 - Supports **US/UK male and female voices**.
 
+### AI Interview Module (Career-Oriented Feature)
+- Job Description-based interview generation (PDF, text, or image input)  
+- AI generates customized interview questions based on the uploaded role  
+- Voice-based interview simulation for realistic experience  
+- Hidden question display to simulate real interview pressure  
+- Users can respond via voice or text input  
+- AI evaluates responses based on relevance and quality  
+- Provides feedback, improvements, and suggested answers  
+- Smart adaptive flow where the next question depends on previous answers  
+- Multiple difficulty levels and job-specific interview modes  
+- Session-based interview handling with proper conversation tracking  
+- Suggests learning topics if repeated weak answers are detected  
+
 ---
 ## Live Demo
 Check out the app online: [https://glotspeak.com](https://glotspeak.com)
